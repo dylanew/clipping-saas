@@ -14,4 +14,4 @@ Next.js app + Supabase (Auth, Postgres with RLS, Storage) + a separate Node work
 
 ## Current state
 Phase 1: AI quality spike in `spike/` (CLI, no app yet).
-Commands: `npm run spike -- <video>`, `npm test`, `npm run typecheck`.
+Commands: `npm run spike -- <video> [--refresh] [--no-render]`, `npm test`, `npm run typecheck`.

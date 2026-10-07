@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { z } from "zod";
+import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import type { Transcript } from "./types.js";
 import { ClipsResponseSchema, cleanClips, DEFAULT_RULES, type Clip } from "./validate.js";
 
@@ -24,19 +24,13 @@ function formatTranscript(t: Transcript): string {
 
 export async function suggestClips(t: Transcript): Promise<{ raw: Clip[]; clips: Clip[] }> {
   const client = new Anthropic(); // reads ANTHROPIC_API_KEY
-  const res = await client.messages.create({
+  const res = await client.messages.parse({
     model: MODEL,
-    max_tokens: 4096,
+    max_tokens: 16000,
     system: SYSTEM,
-    // Forcing a tool call makes the model return JSON matching our schema.
-    tools: [
-      {
-        name: "submit_clips",
-        description: "Submit the selected clips, best first.",
-        input_schema: z.toJSONSchema(ClipsResponseSchema) as Anthropic.Tool.InputSchema,
-      },
-    ],
-    tool_choice: { type: "tool", name: "submit_clips" },
+    // Structured outputs: the response is JSON matching ClipsResponseSchema.
+    // (Forcing a tool call with tool_choice is rejected by claude-sonnet-5-5.)
+    output_config: { format: zodOutputFormat(ClipsResponseSchema) },
     messages: [
       {
         role: "user",
@@ -45,8 +39,8 @@ export async function suggestClips(t: Transcript): Promise<{ raw: Clip[]; clips:
     ],
   });
 
-  const block = res.content.find((b) => b.type === "tool_use");
-  if (!block || block.type !== "tool_use") throw new Error("Model did not return clips");
-  const raw = ClipsResponseSchema.parse(block.input).clips; // throws if shape is wrong
+  if (res.stop_reason === "refusal") throw new Error("Model declined to suggest clips");
+  if (!res.parsed_output) throw new Error(`Model did not return clips (stop_reason: ${res.stop_reason})`);
+  const raw = ClipsResponseSchema.parse(res.parsed_output).clips; // re-check score range etc.
   return { raw, clips: cleanClips(raw, t) };
 }
