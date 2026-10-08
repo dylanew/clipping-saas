@@ -29,17 +29,20 @@ async function load(): Promise<void> {
   await faceapi.nets.faceLandmark68Net.loadFromDisk(modelDir);
 }
 
-/** Video width and height via ffprobe. */
+/**
+ * Width and height of the decoded (auto-rotated) video frames.
+ * Uses ffmpeg's showinfo filter on one frame so only ffmpeg is needed, not ffprobe.
+ */
 export function probeSize(videoPath: string): Promise<{ width: number; height: number }> {
   return new Promise((resolve, reject) => {
-    const p = spawn("ffprobe", ["-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height",
-      "-of", "csv=p=0:s=x", videoPath]);
-    let out = "";
-    p.stdout.on("data", (d) => (out += d));
+    const p = spawn("ffmpeg", ["-hide_banner", "-i", videoPath, "-frames:v", "1", "-vf", "showinfo", "-f", "null", "-"],
+      { stdio: ["ignore", "ignore", "pipe"] });
+    let err = "";
+    p.stderr.on("data", (d) => (err += d));
     p.on("error", reject);
-    p.on("close", (code) => {
-      const [width, height] = out.trim().split("x").map(Number);
-      code === 0 && width && height ? resolve({ width, height }) : reject(new Error(`ffprobe failed for ${videoPath}`));
+    p.on("close", () => {
+      const m = err.match(/ s:(\d+)x(\d+)/);
+      m ? resolve({ width: Number(m[1]), height: Number(m[2]) }) : reject(new Error(`Could not read video size: ${err.slice(-300)}`));
     });
   });
 }
