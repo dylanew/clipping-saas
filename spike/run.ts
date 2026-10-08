@@ -12,11 +12,12 @@ config({ path: ".env.local" });
 
 const [input, ...flags] = process.argv.slice(2);
 if (!input) {
-  console.error("Usage: npm run spike -- <video-file> [--refresh] [--no-render]");
+  console.error("Usage: npm run spike -- <video-file> [--refresh] [--no-render] [--centre]");
   process.exit(1);
 }
 const refresh = flags.includes("--refresh");
 const render = !flags.includes("--no-render");
+const framing = !flags.includes("--centre"); // --centre: plain centre crop, skip face tracking
 const name = path.parse(input).name;
 const out = path.resolve("spike/out");
 fs.mkdirSync(out, { recursive: true });
@@ -48,7 +49,7 @@ if (render && clips.length > 0) {
   const clipsDir = path.join(out, `${name}.clips`);
   console.log(`4/4 Rendering ${clips.length} vertical clips to ${clipsDir} ...`);
   for (const [i, c] of clips.entries()) {
-    const file = await renderClip(input, transcript.words, c, i + 1, clipsDir);
+    const file = await renderClip(input, transcript.words, c, i + 1, clipsDir, { framing });
     console.log(`  ${path.basename(file)}`);
   }
 }
