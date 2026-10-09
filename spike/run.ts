@@ -2,11 +2,11 @@ import "dotenv/config";
 import { config } from "dotenv";
 import fs from "node:fs";
 import path from "node:path";
-import { extractAudio } from "./audio.js";
-import { transcribe } from "./transcribe.js";
-import { suggestClips } from "./analyse.js";
-import { renderClip } from "./render.js";
-import type { Transcript } from "./types.js";
+import { extractAudio } from "../pipeline/audio.js";
+import { transcribe } from "../pipeline/transcribe.js";
+import { suggestClips } from "../pipeline/analyse.js";
+import { renderClip } from "../pipeline/render.js";
+import type { Transcript } from "../pipeline/types.js";
 
 config({ path: ".env.local" });
 

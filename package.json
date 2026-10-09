@@ -4,6 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "dev": "concurrently -k -n web,worker -c blue,magenta \"npm:web\" \"npm:worker\"",
+    "web": "next dev",
+    "worker": "tsx worker/index.ts",
+    "build": "next build",
+    "start": "next start",
     "spike": "tsx spike/run.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
@@ -14,11 +19,17 @@
     "@tensorflow/tfjs-backend-wasm": "^4.22.0",
     "@vladmandic/face-api": "^1.7.15",
     "dotenv": "^18.0.5",
+    "next": "^16.4.0",
     "openai": "^7.28.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
     "zod": "^4.6.5"
   },
   "devDependencies": {
     "@types/node": "^26.6.4",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "concurrently": "^10.0.6",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vitest": "^5.0.3"

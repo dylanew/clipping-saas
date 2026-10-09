@@ -1,0 +1,81 @@
+:root {
+  --bg: #0f1115;
+  --panel: #181b22;
+  --border: #2a2f3a;
+  --text: #e8eaf0;
+  --muted: #8b93a5;
+  --accent: #7c5cff;
+  --ok: #3ccf8e;
+  --warn: #f5b041;
+  --bad: #ff6b6b;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, sans-serif; }
+main { max-width: 1200px; margin: 0 auto; padding: 24px 16px 64px; }
+h1 { font-size: 26px; margin: 8px 0 4px; word-break: break-word; }
+h2 { font-size: 18px; margin-top: 32px; }
+a { color: var(--accent); }
+.top { border-bottom: 1px solid var(--border); padding: 12px 16px; }
+.brand { color: var(--text); font-weight: 700; text-decoration: none; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+.error { color: var(--bad); }
+
+button, .button {
+  background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 8px;
+  padding: 7px 14px; font: inherit; cursor: pointer; text-decoration: none; display: inline-block;
+}
+button:hover:not(:disabled), .button:hover { border-color: var(--accent); }
+button:disabled { opacity: 0.4; cursor: default; }
+.primary { background: var(--accent); border-color: var(--accent); color: white; }
+button.link { background: none; border: none; color: var(--accent); padding: 7px 4px; }
+
+.dropzone {
+  margin-top: 20px; border: 2px dashed var(--border); border-radius: 14px; padding: 48px 16px;
+  text-align: center; cursor: pointer; background: var(--panel);
+}
+.dropzone.over, .dropzone:hover { border-color: var(--accent); }
+.bar { height: 8px; background: var(--border); border-radius: 4px; max-width: 400px; margin: 0 auto; overflow: hidden; }
+.bar div { height: 100%; background: var(--accent); transition: width 0.2s; }
+
+.projects { list-style: none; padding: 0; margin: 0; }
+.projects li { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
+
+.badge { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
+.badge.ready, .badge.done { color: var(--ok); border-color: var(--ok); }
+.badge.failed { color: var(--bad); border-color: var(--bad); }
+.badge.active, .badge.queued, .badge.extracting, .badge.transcribing, .badge.analysing { color: var(--warn); border-color: var(--warn); }
+
+.card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; margin: 16px 0; }
+.steps { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px 24px; }
+.steps li { color: var(--muted); }
+.steps li::before { content: "○ "; }
+.steps li.done { color: var(--ok); }
+.steps li.done::before { content: "✓ "; }
+.steps li.active { color: var(--warn); font-weight: 600; }
+.steps li.active::before { content: "● "; animation: pulse 1s infinite alternate; }
+@keyframes pulse { from { opacity: 1; } to { opacity: 0.3; } }
+
+.review { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; margin-top: 16px; align-items: start; }
+.player { position: sticky; top: 16px; }
+.player video { width: 100%; border-radius: 10px; background: black; }
+@media (max-width: 860px) {
+  .review { grid-template-columns: 1fr; }
+  .player { position: static; }
+}
+
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+.toolbar span { flex: 1; color: var(--muted); }
+.clip { display: flex; gap: 16px; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; }
+.clip.selected { border-color: var(--accent); }
+.clip-main { flex: 1; min-width: 0; }
+.clip-title { display: flex; gap: 10px; align-items: flex-start; font-weight: 600; cursor: pointer; }
+.clip-title input { margin-top: 5px; }
+.clip p { margin: 4px 0; }
+.reason { font-size: 14px; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+.vertical { width: 150px; aspect-ratio: 9 / 16; border-radius: 8px; background: black; flex-shrink: 0; }
+@media (max-width: 500px) {
+  .clip { flex-direction: column; }
+  .vertical { width: 60%; max-width: 220px; }
+}
