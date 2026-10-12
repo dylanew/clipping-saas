@@ -22,7 +22,9 @@ function formatTranscript(t: Transcript): string {
   return t.segments.map((s) => `[${s.start.toFixed(1)}-${s.end.toFixed(1)}] ${s.text}`).join("\n");
 }
 
-export async function suggestClips(t: Transcript): Promise<{ raw: Clip[]; clips: Clip[] }> {
+export interface ClipUsage { model: string; inputTokens: number; outputTokens: number }
+
+export async function suggestClips(t: Transcript): Promise<{ raw: Clip[]; clips: Clip[]; usage: ClipUsage }> {
   const client = new Anthropic(); // reads ANTHROPIC_API_KEY
   const res = await client.messages.parse({
     model: MODEL,
@@ -42,5 +44,6 @@ export async function suggestClips(t: Transcript): Promise<{ raw: Clip[]; clips:
   if (res.stop_reason === "refusal") throw new Error("Model declined to suggest clips");
   if (!res.parsed_output) throw new Error(`Model did not return clips (stop_reason: ${res.stop_reason})`);
   const raw = ClipsResponseSchema.parse(res.parsed_output).clips; // re-check score range etc.
-  return { raw, clips: cleanClips(raw, t) };
+  const usage = { model: MODEL, inputTokens: res.usage.input_tokens, outputTokens: res.usage.output_tokens };
+  return { raw, clips: cleanClips(raw, t), usage };
 }

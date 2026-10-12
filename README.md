@@ -37,6 +37,20 @@ for 3s+; with no face, show the whole frame over a blurred copy. The chosen layo
 the clip is saved as `NN_title.framing.json` next to each clip. Thresholds live in `RULES` in
 `pipeline/framing.ts`.
 
+## Clip quality test (`eval/`)
+Runs the pipeline over a batch of videos so you can judge the picks across different kinds of content.
+
+    npm run eval -- ~/Videos/eval            # a folder, or list video files
+    npm run eval:report
+
+Name each file by its kind (e.g. `interview_ali.mp4`, `tutorial_excel.mp4`) so the report reads well.
+`eval` writes `eval/out/scorecard.csv` with one row per clip. Watch each clip in `eval/out/<video>/clips/`
+and fill in `post_it`, `clean_start`, `clean_end`, `framing_ok` with y/n, plus `notes` for anything wrong.
+`eval:report` turns that into `eval/out/report.md`: keep rates per video, time per minute of video and
+estimated API cost (Whisper at $0.006/min, Claude at list price; see `eval/score.ts`). Videos that already
+ran are skipped, so you can add more later; `--redo` runs one again (and clears its ratings).
+Flags `--no-render` and `--centre` work as in the spike.
+
 ## Spike CLI
     npm run spike -- path/to/video.mp4 [--refresh] [--no-render] [--centre]
 

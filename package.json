@@ -10,6 +10,8 @@
     "build": "next build",
     "start": "next start",
     "spike": "tsx spike/run.ts",
+    "eval": "tsx eval/run.ts",
+    "eval:report": "tsx eval/report.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
