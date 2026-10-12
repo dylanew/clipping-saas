@@ -13,5 +13,7 @@ Turns long-form video into short-form clips: upload -> transcribe -> AI suggests
 Next.js app + Supabase (Auth, Postgres with RLS, Storage) + a separate Node worker running FFmpeg and AI calls. Postgres is the job queue.
 
 ## Current state
-Phase 1: AI quality spike in `spike/` (CLI, no app yet).
-Commands: `npm run spike -- <video> [--refresh] [--no-render] [--centre]`, `npm test`, `npm run typecheck`.
+Phase 2: local MVP web app. Next.js (`app/`) + a polling worker (`worker/`) sharing `pipeline/` (the spike code).
+Storage is local files in `data/` via `lib/store.ts` (stand-in for Supabase; the worker is the only writer of project.json).
+No accounts, payments or publishing yet.
+Commands: `npm run dev` (web + worker), `npm run spike -- <video> [--refresh] [--no-render] [--centre]`, `npm test`, `npm run typecheck`.
