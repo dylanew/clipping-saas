@@ -70,8 +70,12 @@ const OUT_H = 1920;
 const even = (n: number) => Math.max(2, Math.round(n / 2) * 2);
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
 
-/** ffmpeg filter that turns a W x H source frame into a 1080x1920 frame for one layout. */
-export function layoutFilter(layout: Layout, W: number, H: number): string {
+/**
+ * ffmpeg filter that turns a W x H source frame into a 1080x1920 frame for one layout.
+ * `tag` prefixes its internal labels so several layouts can share one filter graph.
+ */
+export function layoutFilter(layout: Layout, W: number, H: number, tag = ""): string {
+  const l = (name: string) => `[${tag}${name}]`;
   if (layout.kind === "crop") {
     const cw = even(Math.min(W, (H * 9) / 16));
     const ch = even(Math.min(H, (W * 16) / 9));
@@ -89,10 +93,26 @@ export function layoutFilter(layout: Layout, W: number, H: number): string {
       const y = Math.round(clamp(t.cy * H - th * 0.45, 0, H - th));
       return `crop=${tw}:${th}:${x}:${y},scale=${OUT_W}:${OUT_H / 2}`;
     };
-    return `split[a][b];[a]${tile(layout.top)}[a1];[b]${tile(layout.bottom)}[b1];[a1][b1]vstack,setsar=1`;
+    return `split${l("a")}${l("b")};${l("a")}${tile(layout.top)}${l("a1")};${l("b")}${tile(layout.bottom)}${l("b1")};${l("a1")}${l("b1")}vstack,setsar=1`;
   }
-  return `split[a][b];[a]scale=${OUT_W}:${OUT_H}:force_original_aspect_ratio=increase,crop=${OUT_W}:${OUT_H},boxblur=20:2[bg];` +
-    `[b]scale=${OUT_W}:${OUT_H}:force_original_aspect_ratio=decrease[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2,setsar=1`;
+  return `split${l("a")}${l("b")};${l("a")}scale=${OUT_W}:${OUT_H}:force_original_aspect_ratio=increase,crop=${OUT_W}:${OUT_H},boxblur=20:2${l("bg")};` +
+    `${l("b")}scale=${OUT_W}:${OUT_H}:force_original_aspect_ratio=decrease${l("fg")};${l("bg")}${l("fg")}overlay=(W-w)/2:(H-h)/2,setsar=1`;
+}
+
+/**
+ * Filter graph that cuts the clip into the plan's parts (times relative to the clip start),
+ * frames each part with its layout, joins them and applies `finish` (the captions). Output: [vout].
+ */
+export function framingGraph(plan: Segment[], W: number, H: number, finish: string): string {
+  const n = plan.length;
+  const inputs = plan.map((_, k) => `[in${k}]`).join("");
+  const parts = plan.map((seg, k) => {
+    // The last part runs to the end of the input so no trailing frames are lost.
+    const range = k === n - 1 ? `start=${seg.start.toFixed(3)}` : `start=${seg.start.toFixed(3)}:end=${seg.end.toFixed(3)}`;
+    return `[in${k}]trim=${range},setpts=PTS-STARTPTS,${layoutFilter(seg.layout, W, H, `p${k}`)}[v${k}]`;
+  });
+  const joined = plan.map((_, k) => `[v${k}]`).join("");
+  return [`[0:v]split=${n}${inputs}`, ...parts, `${joined}concat=n=${n}:v=1:a=0,${finish}[vout]`].join(";");
 }
 
 /**
@@ -115,35 +135,24 @@ export async function renderClip(
   }
   fs.writeFileSync(`${base}.framing.json`, JSON.stringify(plan, (k, v) => (k === "mouth" ? undefined : v), 2));
 
-  // Render each part with its own layout, then join them and add captions and the original audio in one pass.
-  const parts: string[] = [];
-  for (const [k, seg] of plan.entries()) {
-    const part = `${base}.part${k}.mp4`;
-    await ffmpeg([
-      "-y", "-ss", (clip.start + seg.start).toFixed(3), "-to", (clip.start + seg.end).toFixed(3), "-i", videoPath,
-      "-vf", layoutFilter(seg.layout, src.width, src.height), "-an",
-      "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", part,
-    ]);
-    parts.push(part);
-  }
-  const list = `${base}.parts.txt`;
-  fs.writeFileSync(list, parts.map((p) => `file '${path.resolve(p).replace(/'/g, "'\\''")}'`).join("\n"));
-
   const assPath = `${base}.ass`;
   fs.writeFileSync(assPath, buildCaptions(words, clip));
   // The ass filter takes a filter-graph argument, so escape characters it treats specially.
   const assArg = assPath.replace(/\\/g, "\\\\").replace(/:/g, "\\:").replace(/'/g, "\\'");
   try {
+    // One pass over one input: each part of the plan is trimmed from the same video stream the
+    // audio comes from, so every frame lands in exactly one part and picture and sound stay in sync.
+    // (Encoding parts separately and joining them added up to a frame per part, which drifted.)
     await ffmpeg([
-      "-y", "-f", "concat", "-safe", "0", "-i", list,
-      "-ss", clip.start.toFixed(3), "-to", clip.end.toFixed(3), "-i", videoPath,
-      "-map", "0:v", "-map", "1:a:0?", "-vf", `ass=${assArg}`,
-      "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
-      "-c:a", "aac", "-b:a", "128k", "-shortest", "-movflags", "+faststart",
+      "-y", "-ss", clip.start.toFixed(3), "-t", duration.toFixed(3), "-i", videoPath,
+      "-filter_complex", framingGraph(plan, src.width, src.height, `ass=${assArg}`),
+      "-map", "[vout]", "-map", "0:a:0?",
+      "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+      "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart",
       `${base}.mp4`,
     ]);
   } finally {
-    for (const p of [...parts, list]) fs.rmSync(p, { force: true });
+    fs.rmSync(assPath, { force: true });
   }
   return `${base}.mp4`;
 }

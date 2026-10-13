@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { findShots, planFraming, smooth, type Face, type Frame, type Segment } from "./framing.js";
-import { layoutFilter } from "./render.js";
+import { framingGraph, layoutFilter } from "./render.js";
 
 const FPS = 5;
 const CROP_W = 0.316; // 9:16 window on a 16:9 frame
@@ -72,5 +72,26 @@ describe("layoutFilter", () => {
   });
   it("handles a source that is already vertical", () => {
     expect(layoutFilter({ kind: "crop", cx: 0.5 }, 1080, 1920)).toMatch(/^crop=1080:1920:0:0,/);
+  });
+});
+
+describe("framingGraph", () => {
+  const plan: Segment[] = [
+    { start: 0, end: 2, layout: { kind: "fit" } },
+    { start: 2, end: 5, layout: { kind: "fit" } },
+    { start: 5, end: 9, layout: { kind: "crop", cx: 0.5 } },
+  ];
+  const g = framingGraph(plan, 1920, 1080, "null");
+  it("trims every part from one input and joins them in order", () => {
+    expect(g).toMatch(/^\[0:v\]split=3\[in0\]\[in1\]\[in2\];/);
+    expect(g).toContain("[in0]trim=start=0.000:end=2.000,setpts=PTS-STARTPTS,");
+    expect(g).toContain("[in2]trim=start=5.000,setpts"); // last part runs to the end
+    expect(g).toMatch(/\[v0\]\[v1\]\[v2\]concat=n=3:v=1:a=0,null\[vout\]$/);
+  });
+  it("gives each part's internal labels a unique name", () => {
+    const labels = [...g.matchAll(/\[(p\d+\w+)\]/g)].map((m) => m[1]);
+    expect(labels).toContain("p0bg");
+    expect(labels).toContain("p1bg");
+    expect(g).not.toMatch(/\[(a|b|bg|fg|a1|b1)\]/);
   });
 });

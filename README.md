@@ -48,7 +48,8 @@ Name each file by its kind (e.g. `interview_ali.mp4`, `tutorial_excel.mp4`) so t
 and fill in `post_it`, `clean_start`, `clean_end`, `framing_ok` with y/n, plus `notes` for anything wrong.
 `eval:report` turns that into `eval/out/report.md`: keep rates per video, time per minute of video and
 estimated API cost (Whisper at $0.006/min, Claude at list price; see `eval/score.ts`). Videos that already
-ran are skipped, so you can add more later; `--redo` runs one again (and clears its ratings).
+ran are skipped, so you can add more later; `--redo` runs one again (and clears its ratings). Add
+`--same-picks` to a redo to reuse Claude's saved picks, so only the cutting and rendering change (free).
 Flags `--no-render` and `--centre` work as in the spike.
 
 ## Spike CLI

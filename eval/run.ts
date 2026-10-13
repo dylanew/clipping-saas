@@ -1,14 +1,15 @@
 /**
  * Batch test: runs the clip pipeline over several videos and writes a scorecard to fill in by hand.
  *
- *   npm run eval -- <videos or folders...> [--redo] [--no-render] [--centre]
+ *   npm run eval -- <videos or folders...> [--redo] [--same-picks] [--no-render] [--centre]
  *
  * Outputs (eval/out/, git-ignored):
  *   <video>/            transcript, clip suggestions and rendered clips for that video
  *   scorecard.csv       one row per clip; fill in post_it, clean_start, clean_end, framing_ok, notes
  *   runs.csv            one row per video: timings, token counts, estimated cost, errors
  * Videos that already ran fine are skipped (so you can add more later) unless --redo is passed;
- * failed ones are tried again.
+ * failed ones are tried again. With --same-picks, a redo reuses Claude's saved picks instead of asking
+ * again, so only the cutting and rendering change between runs (and it costs nothing).
  * Then run `npm run eval:report` for the summary.
  */
 import { config } from "dotenv";
@@ -18,6 +19,8 @@ import { extractAudio } from "../pipeline/audio.js";
 import { transcribe } from "../pipeline/transcribe.js";
 import { suggestClips } from "../pipeline/analyse.js";
 import { renderClip } from "../pipeline/render.js";
+import { cleanClips, type Clip } from "../pipeline/validate.js";
+import type { ClipUsage } from "../pipeline/analyse.js";
 import type { Transcript } from "../pipeline/types.js";
 import { parseCsv, toCsv, type Row } from "./csv.js";
 import { claudeCost, RUNS_COLUMNS, SCORECARD_COLUMNS, WHISPER_USD_PER_MIN } from "./score.js";
@@ -33,7 +36,7 @@ const args = process.argv.slice(2);
 const flags = new Set(args.filter((a) => a.startsWith("--")));
 const inputs = args.filter((a) => !a.startsWith("--"));
 if (inputs.length === 0) {
-  console.error("Usage: npm run eval -- <videos or folders...> [--redo] [--no-render] [--centre]");
+  console.error("Usage: npm run eval -- <videos or folders...> [--redo] [--same-picks] [--no-render] [--centre]");
   process.exit(1);
 }
 
@@ -87,11 +90,20 @@ for (const [n, video] of videos.entries()) {
     run.minutes = minutes.toFixed(1);
     run.whisper_usd = (minutes * WHISPER_USD_PER_MIN).toFixed(4); // what a fresh run costs, cached or not
 
-    console.log(`${tag}: finding clips...`);
-    const t1 = Date.now();
-    const { raw, clips, usage } = await suggestClips(transcript);
-    run.analyse_s = seconds(t1);
-    fs.writeFileSync(path.join(dir, "clips.json"), JSON.stringify({ raw, clips, usage }, null, 2));
+    const picksPath = path.join(dir, "clips.json");
+    let raw: Clip[], clips: Clip[], usage: ClipUsage;
+    if (flags.has("--same-picks") && fs.existsSync(picksPath)) {
+      // Reuse the saved picks but clean them with the current rules; usage is from the original call.
+      ({ raw, usage } = JSON.parse(fs.readFileSync(picksPath, "utf8")));
+      clips = cleanClips(raw, transcript);
+      console.log(`${tag}: reusing saved picks`);
+    } else {
+      console.log(`${tag}: finding clips...`);
+      const t1 = Date.now();
+      ({ raw, clips, usage } = await suggestClips(transcript));
+      run.analyse_s = seconds(t1);
+    }
+    fs.writeFileSync(picksPath, JSON.stringify({ raw, clips, usage }, null, 2));
     run.claude_model = usage.model;
     run.claude_in_tokens = String(usage.inputTokens);
     run.claude_out_tokens = String(usage.outputTokens);
@@ -100,6 +112,7 @@ for (const [n, video] of videos.entries()) {
     run.clips_kept = String(clips.length);
 
     const t2 = Date.now();
+    fs.rmSync(path.join(dir, "clips"), { recursive: true, force: true }); // clear the last run's renders
     for (const [i, c] of clips.entries()) {
       let file = "";
       if (!flags.has("--no-render")) {
