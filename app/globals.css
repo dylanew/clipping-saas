@@ -79,3 +79,11 @@ button.link { background: none; border: none; color: var(--accent); padding: 7px
   .clip { flex-direction: column; }
   .vertical { width: 60%; max-width: 220px; }
 }
+
+.top { display: flex; align-items: center; gap: 12px; }
+.top .account { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.login { max-width: 380px; margin: 40px auto 0; }
+.login form { display: flex; flex-direction: column; gap: 8px; }
+.login input { background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font: inherit; }
+.wide { width: 100%; }
+.or { text-align: center; margin: 12px 0; }

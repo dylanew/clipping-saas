@@ -3,7 +3,8 @@
 Long-form video -> AI-selected short-form clips.
 
 ## MVP web app (runs on your machine)
-Needs Node 20+, FFmpeg on PATH and `.env.local` (copy `.env.example`) with `OPENAI_API_KEY` and `ANTHROPIC_API_KEY`.
+Needs Node 20+, FFmpeg on PATH and `.env.local` (copy `.env.example`) with `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`
+and the Supabase URL and publishable key. Every page needs sign-in (email link or Google, via Supabase Auth).
 
     npm install
     npm run dev
